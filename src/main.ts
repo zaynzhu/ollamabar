@@ -1,22 +1,12 @@
-import { invoke } from "@tauri-apps/api/core";
+// src/main.ts
+import { getState, onStateChanged } from './api'
+import type { AppState } from './types'
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
+const app = document.querySelector<HTMLDivElement>('#app')!
 
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+function render(state: AppState) {
+  app.innerHTML = `<pre>${JSON.stringify(state, null, 2)}</pre>` // B2 换真 UI
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+getState().then(render)
+onStateChanged(render)
