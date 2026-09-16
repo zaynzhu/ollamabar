@@ -107,6 +107,7 @@ Use the **Add key** form at the bottom of the window: enter an alias (e.g. "work
 | [Design Spec](docs/superpowers/specs/2026-09-15-ollamabar-design.md) | Architecture, frozen contract, and data honesty clauses (H1–H6) |
 | [Implementation Plan](docs/superpowers/plans/2026-09-15-ollamabar.md) | Task breakdown and acceptance checklists |
 | [API Semantics Verification](docs/verify-usage.md) | Record of comparing API numbers against ollama.com |
+| [Deferred Minors](docs/deferred-minors.md) | Low-priority items recorded during implementation reviews |
 
 ## 🔄 Comparison with CodexBar
 

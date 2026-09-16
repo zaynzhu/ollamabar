@@ -105,6 +105,7 @@ npm run tauri build
 | [设计规格](docs/superpowers/specs/2026-09-15-ollamabar-design.md) | 架构、冻结契约与数据诚实性条款（H1~H6） |
 | [实现计划](docs/superpowers/plans/2026-09-15-ollamabar.md) | 分任务实现过程与验收清单 |
 | [接口口径验证](docs/verify-usage.md) | API 数字与 ollama.com 官网对照记录 |
+| [遗留项清单](docs/deferred-minors.md) | 实现期审查记录的低优先级事项 |
 
 ## 🔄 与 CodexBar 对比
 
