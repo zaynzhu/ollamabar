@@ -13,6 +13,5 @@ export function renderRing(pct: number | null, label: string): string {
       <text x="50" y="47" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="600">${pct == null ? '--' : Math.round(v) + '%'}</text>
       <text x="50" y="66" text-anchor="middle" fill="#8b949e" font-size="11">${label}</text>
     </svg>
-    <span class="caliber">口径以官方未文档化接口为准</span>
   </div>`
 }
