@@ -24,12 +24,12 @@ export const mockGetState = (): AppState => ({
 })
 
 export const mockGetHistory = (_alias: string, _hours: number): Sample[] => {
-  // 24h 假锯齿：每 10 分钟一点，窗口重置处从高跌 0
+  // 24h 假锯齿：每 10 分钟一点，窗口内爬升、重置跌 0
   const pts: Sample[] = []
   for (let i = 144; i >= 0; i--) {
-    const inWindow = i % 30   // 30 点 = 5h 模拟窗口
+    const inWindow = i % 30   // 30 点 = 5h 模拟窗口，正向锯齿：值随时间爬升
     pts.push({ ts: new Date(Date.now() - i * 600e3).toISOString(),
-      session_pct: inWindow * 1.2, weekly_pct: 30 + (i % 60) * 0.5, session_models: [] })
+      session_pct: ((30 - inWindow) % 30) * 1.2, weekly_pct: 30 + (i % 60) * 0.5, session_models: [] })
   }
   return pts
 }

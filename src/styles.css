@@ -2,3 +2,12 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; background: #11151c; color: #e6edf3; }
 #app { padding: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px; }
+.rings { display: flex; gap: 8px; }
+.caliber { font-size: 10px; color: #8b949e; }
+.banner { border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; font-size: 13px; }
+.banner.degraded { background: #3d2e00; color: #d29922; }
+.banner.invalid_key { background: #3d1418; color: #f85149; }
+.banner.dead { background: #2d0a0d; color: #f85149; font-weight: 600; }
+.footnote { font-size: 11px; color: #8b949e; }
