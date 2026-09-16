@@ -13,9 +13,10 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "ollamabar",
+        "title": "OllamaBar",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "resizable": true
       }
     ],
     "security": {

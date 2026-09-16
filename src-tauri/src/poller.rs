@@ -20,7 +20,8 @@ pub enum PollerMsg { RefreshNow(tokio::sync::oneshot::Sender<RefreshResult>), St
 
 pub const DEFAULT_URL: &str = "https://ollama.com/api/usage";
 
-/// 单 key 轮询主循环。app_state 为全部 key 共享的运行时表；每次状态变化后 emit_state 回调负责推前端。
+/// 单 key 轮询主循环。app_state 为全部 key 共享的运行时表；
+/// 状态变化经 store_tx 消息驱动 lib.rs 装配侧的写者任务推 state-changed（本模块不直接 emit）。
 pub async fn run_key_task(
     alias: String,
     api_key: String,
@@ -91,7 +92,12 @@ async fn do_fetch(
                 }));
                 (true, msgs)
             }
-            Err(e) => { runtime.apply_failure(e, now); (false, Vec::new()) }
+            Err(e) => {
+                runtime.apply_failure(e, now);
+                // 失败分支无常规消息产出，补一条脏标记驱动写者推 state-changed（尽力而为，通道满即弃）
+                let _ = store_tx.try_send(StoreMsg::StateDirty);
+                (false, Vec::new())
+            }
         }
     };
     for msg in msgs { let _ = store_tx.send(msg).await; }

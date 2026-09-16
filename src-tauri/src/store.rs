@@ -21,6 +21,8 @@ impl From<SampleRow> for Sample {
 pub enum StoreMsg {
     Sample(SampleRow),
     ResetEvent { alias: String, observed_at: String, kind: String },
+    // 失败路径无库写入，仅用于驱动写者任务推送 state-changed（A7）
+    StateDirty,
 }
 
 pub struct Store { pub conn: Connection }
