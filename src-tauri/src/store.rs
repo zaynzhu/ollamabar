@@ -18,6 +18,11 @@ impl From<SampleRow> for Sample {
     }
 }
 
+pub enum StoreMsg {
+    Sample(SampleRow),
+    ResetEvent { alias: String, observed_at: String, kind: String },
+}
+
 pub struct Store { pub conn: Connection }
 
 pub const SCHEMA: &str = "
