@@ -10,7 +10,7 @@ export function renderRing(pct: number | null, label: string): string {
       <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="10"
         stroke-dasharray="${(c * v / 100).toFixed(1)} ${c.toFixed(1)}"
         stroke-linecap="round" transform="rotate(-90 50 50)"/>
-      <text x="50" y="47" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="600">${pct == null ? '--' : Math.round(v)}%</text>
+      <text x="50" y="47" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="600">${pct == null ? '--' : Math.round(v) + '%'}</text>
       <text x="50" y="66" text-anchor="middle" fill="#8b949e" font-size="11">${label}</text>
     </svg>
     <span class="caliber">口径以官方未文档化接口为准</span>

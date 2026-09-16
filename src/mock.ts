@@ -1,5 +1,5 @@
 // src/mock.ts —— 覆盖四种 failure_level、空 models、多 key、滞后场景的假数据工厂
-import type { AppState, Sample, UsageSnapshot } from './types'
+import type { AppState, ModelStat, Sample, UsageSnapshot } from './types'
 
 const snap = (over: Partial<UsageSnapshot>): UsageSnapshot => ({
   session_pct: 9.2, weekly_pct: 41.3,
@@ -13,12 +13,31 @@ const snap = (over: Partial<UsageSnapshot>): UsageSnapshot => ({
   ...over,
 })
 
+// —— B4 追加的边界场景 ——
+// 22 个模型、request_count 从 500 递减到 5（前端条形图只渲染 top 20）
+const manyModels: ModelStat[] = Array.from({ length: 22 }, (_, i) => ({
+  name: `model-${String(i + 1).padStart(2, '0')}`,
+  request_count: 500 - Math.floor((495 / 21) * i),
+}))
+const LONG_ALIAS_A = '很久之前的备用账号十二字' // 12 字超长别名，混 22 模型场景
+const LONG_ALIAS_B = '很久之前没再用的备用账号' // 12 字超长别名，混 null pct 场景
+
 export const mockGetState = (): AppState => ({
   keys: [
     { alias: '工作', snapshot: snap({}) },
     { alias: '个人', snapshot: snap({ session_pct: 0, failure_level: 'degraded', error_message: '数据滞后 12 分钟', session_models: [] }) },
     { alias: '过期key', snapshot: snap({ failure_level: 'invalid_key', error_message: 'key 无效或已撤销' }) },
     { alias: '接口失效', snapshot: snap({ failure_level: 'dead', error_message: '接口可能已失效，上次成功：2026-09-14T08:00:00Z' }) },
+    // 22 个模型：验证条形图 top-20 截断与长列表排版
+    { alias: LONG_ALIAS_A, snapshot: snap({ session_models: manyModels.slice(0, 5), weekly_models: manyModels }) },
+    // 首拍未成功：session_pct 为 null，环形图显示 '--'
+    { alias: LONG_ALIAS_B, snapshot: snap({ session_pct: null, failure_level: 'none', last_success_at: null, error_message: null }) },
+    // 两个列表全空：显示"本窗口暂无调用"
+    { alias: '空窗口', snapshot: snap({ session_models: [], weekly_models: [] }) },
+    // 组合场景：degraded + null pct + 空 session 模型 + 重置时间已过期（"即将重置"）
+    { alias: '混合滞后', snapshot: snap({ session_pct: null, session_models: [],
+      weekly_models: manyModels.slice(0, 3), failure_level: 'degraded',
+      error_message: '数据滞后 12 分钟', session_reset_est: new Date(Date.now() - 3600e3).toISOString() }) },
   ],
   generated_at: new Date().toISOString(),
 })
