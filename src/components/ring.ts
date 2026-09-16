@@ -5,7 +5,7 @@ export function renderRing(pct: number | null, label: string): string {
   const color = v >= 90 ? '#f85149' : v >= 70 ? '#d29922' : '#3fb950'
   return `
   <div class="ring">
-    <svg viewBox="0 0 100 100" width="96" height="96">
+    <svg viewBox="0 0 100 100" width="112" height="112">
       <circle cx="50" cy="50" r="${r}" fill="none" stroke="#21262d" stroke-width="10"/>
       <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="10"
         stroke-dasharray="${(c * v / 100).toFixed(1)} ${c.toFixed(1)}"
