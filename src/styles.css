@@ -23,3 +23,13 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #11151c; color
 .sparkline { display: block; width: 100%; height: auto; }
 .axis { font-size: 10px; color: #8b949e; margin: 4px 0 0; }
 .empty { font-size: 11px; color: #8b949e; margin: 6px 0; }
+#addKey { display: flex; gap: 8px; margin-top: 16px; max-width: 640px; }
+#addKey input { flex: 1 1 auto; min-width: 0; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #e6edf3; font-size: 13px; transition: border-color 0.15s; }
+#addKey input::placeholder { color: #6e7681; }
+#addKey input:focus { outline: none; border-color: #58a6ff; }
+#addKey button { flex: 0 0 auto; background: #238636; color: #fff; border: 1px solid #2ea043; border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+#addKey button:hover { background: #2ea043; }
+#addKey button:active { background: #1f7a30; }
+.card header button { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 5px; padding: 3px 10px; font-size: 11px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.card header button:hover { color: #e6edf3; border-color: #8b949e; }
+.card header button.remove:hover { color: #f85149; border-color: #f85149; }
