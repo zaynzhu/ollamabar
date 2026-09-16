@@ -14,12 +14,6 @@ use tauri::Manager;
 
 use commands::Ctx;
 
-// 模板 greet command：前端模板页仍在调用，A8/C1 换 UI 后再清理
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 /// 包装 poller::run_key_task：构造真机 FetchFn（闭包自带 reqwest::Client）、
 /// 往 runtime 表插入 KeyRuntime、启动任务并把命令通道存入 poll_tx。
 /// 注意：不用 tokio::spawn（command 线程无运行时上下文会 panic），统一走 tauri::async_runtime。
@@ -50,7 +44,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
             commands::get_state,
             commands::get_history,
             commands::add_key,
