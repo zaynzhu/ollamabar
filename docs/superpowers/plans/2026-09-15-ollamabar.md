@@ -49,7 +49,7 @@ Expected: 两个版本号正常输出。
 仓库根已有 `docs/`，不能在原地生成。在临时目录生成 vanilla-ts 模板后移入：
 
 ```bash
-cd /e/claudecode/project
+cd <项目父目录>
 npm create tauri-app@latest scaffold-tmp -- --template vanilla-ts --manager npm --yes
 # 将 scaffold-tmp 内除 .git 外全部移入 ollamabar/，确认 tauri.conf.json productName 为 "OllamaBar"
 mv scaffold-tmp/* ollamabar/ && rm -rf scaffold-tmp

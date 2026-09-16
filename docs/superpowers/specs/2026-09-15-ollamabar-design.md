@@ -2,7 +2,7 @@
 
 日期：2026-09-15
 状态：待用户审批
-项目目录：`E:\claudecode\project\ollamabar`（启动时为空目录，本文件为首个文档）
+项目目录：本仓库（撰写时为空目录，本文件为首个文档）
 
 ## 1. 项目定位
 
@@ -23,7 +23,7 @@
 
 ## 3. 数据源与诚实性条款（红队审查产物，具有最高优先级）
 
-唯一数据源：`GET https://ollama.com/api/usage`，Header `Authorization: Bearer <api_key>`。该接口**未文档化**（legacy），前身实现见 `E:\codex\cc-switch-hub\src\quota_fetcher.py` 与 `E:\claudecode\project\ollama\watch-ollama.ps1`。
+唯一数据源：`GET https://ollama.com/api/usage`，Header `Authorization: Bearer <api_key>`。该接口**未文档化**（legacy），前身实现见同机另两个项目的 `quota_fetcher.py` 与 `watch-ollama.ps1`（本地仓库，未随本项目发布）。
 
 响应结构（已观测）：
 
