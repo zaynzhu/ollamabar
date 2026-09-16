@@ -1,9 +1,22 @@
 // src/main.ts
-import { getState, onStateChanged, refreshNow, removeKey } from './api'
+import { getState, onStateChanged, refreshNow, removeKey, getHistory } from './api'
 import { renderKeyCard } from './components/keyCard'
+import { renderModelBars } from './components/modelBars'
+import { renderHistoryLine } from './components/historyLine'
 import type { AppState } from './types'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
+
+// 卡片渲染后异步填充两图：模型条形图 + 24h 锯齿历史曲线
+async function fillCharts(state: AppState) {
+  for (const ks of state.keys) {
+    const snap = ks.snapshot
+    const box = app.querySelector<HTMLElement>(`[data-models="${ks.alias}"]`)
+    if (box && snap) box.innerHTML = renderModelBars(snap.weekly_models)
+    const hist = app.querySelector<HTMLElement>(`[data-history="${ks.alias}"]`)
+    if (hist) hist.innerHTML = renderHistoryLine(await getHistory(ks.alias, 24))
+  }
+}
 
 function render(state: AppState) {
   const cards = state.keys.map(renderKeyCard).join('')
@@ -13,6 +26,7 @@ function render(state: AppState) {
       <input name="apiKey" placeholder="api_key" required>
       <button type="submit">添加 key</button></form>
     <p class="footnote">重置时间为客户端推算（预计）；数字口径以官方未文档化接口为准</p>`
+  fillCharts(state)
 }
 
 app.addEventListener('click', async (e) => {
