@@ -39,7 +39,7 @@ export function onStateChanged(cb: (s: AppState) => void): () => void {
   if (!inTauri) return mockOnStateChanged(cb)
   let un = () => {}
   import('@tauri-apps/api/event').then(({ listen }) => {
-    listen('state-changed', (e) => cb(e.payload)).then((u) => { un = u })
+    listen('state-changed', (e) => cb(e.payload as AppState)).then((u) => { un = u })
   })
   return () => un()
 }

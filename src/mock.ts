@@ -34,9 +34,9 @@ export const mockGetHistory = (_alias: string, _hours: number): Sample[] => {
   return pts
 }
 
-export const mockAddKey = async () => {}
-export const mockRemoveKey = async () => {}
-export const mockRefreshNow = async (): Promise<'updated'> => 'updated'
+export const mockAddKey = async (_alias: string, _apiKey: string) => {}
+export const mockRemoveKey = async (_alias: string) => {}
+export const mockRefreshNow = async (_alias: string): Promise<'updated'> => 'updated'
 export const mockOnStateChanged = (cb: (s: AppState) => void) => {
   const t = setInterval(() => cb(mockGetState()), 5000)
   return () => clearInterval(t)
