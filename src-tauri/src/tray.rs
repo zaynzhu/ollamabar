@@ -1,16 +1,30 @@
 // 托盘常驻（spec 架构承诺）：关窗不退出而是 hide，轮询继续
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "打开仪表盘", true, None::<&str>)?;
+    // 勾选态取真实注册表状态，避免菜单显示与实际不符
+    let enabled = app.autolaunch().is_enabled().unwrap_or(false);
+    let autostart = CheckMenuItem::with_id(app, "autostart", "开机启动", true, enabled, None::<&str>)?;
+    let auto_item = autostart.clone();
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &autostart, &quit])?;
     let mut builder = TrayIconBuilder::with_id("main")
         .menu(&menu)
-        .on_menu_event(|app, event| match event.id.as_ref() {
+        .on_menu_event(move |app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
+            "autostart" => {
+                let res = if auto_item.is_checked().unwrap_or(false) {
+                    app.autolaunch().disable()
+                } else {
+                    app.autolaunch().enable()
+                };
+                if let Err(e) = res { eprintln!("开机启动切换失败: {e}"); }
+                else { let _ = auto_item.set_checked(app.autolaunch().is_enabled().unwrap_or(false)); }
+            }
             "quit" => app.exit(0),
             _ => {}
         });
