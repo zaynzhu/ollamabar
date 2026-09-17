@@ -30,6 +30,8 @@ OllamaBar is a cross-platform (Windows / macOS) tray-resident usage viewer for O
 - **Honest History** -- Sampled every 60s into SQLite (WAL); the sawtooth shape of in-window cumulative usage is rendered as-is, never smoothed
 - **Three-Level Failure Alerts** -- Invalid key, stale data, and suspected API death are reported separately — no silently stale numbers
 - **Tray-Resident** -- Closing the window hides it; sampling continues in the background, one click to bring it back
+- **Autostart on Boot** -- Toggle "start on boot" from the tray menu; writes a per-user Run registry entry, no admin rights needed
+- **Run Logs & Export** -- The "Details" dialog on each card lists every sample, error, and reset; retained 7 days by default (switchable to 30) with auto-cleanup, exportable as txt
 - **Cross-Platform** -- One Rust backend + web frontend codebase running on Windows and macOS
 
 ## 🚀 Quick Start
@@ -89,8 +91,12 @@ Use the **Add key** form at the bottom of the window: enter an alias (e.g. "work
 
 - Each card shows the 5h-window ring on the left and the weekly ring on the right
 - Below them, two columns show reset countdowns (labeled "estimated")
-- The **weekly model calls** bar chart ranks models by request count
+- The **5h / weekly model calls** bar charts rank models by request count within each window
 - The **usage chart** is an as-is sawtooth of in-window cumulative share; dashed lines mark estimated reset boundaries
+
+### Viewing Run Logs
+
+Click **Details** on a card to open its run log: one successful sample per minute, with fetch errors and observed resets logged separately; check "only issues" to see errors and resets alone. Logs are retained 7 days by default (switchable to 30 in the dialog) and cleaned up automatically, so their size stays bounded; **Export** produces a txt in the same format as command-line monitors for long-term archiving.
 
 ### Understanding Failure Alerts
 

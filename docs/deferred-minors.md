@@ -25,6 +25,8 @@
 | 17 | `src-tauri/Cargo.toml` | `description = "A Tauri App"`、`authors = ["you"]` 为模板占位残留 | 一行可改 |
 | 18 | `package.json` | `"vite"` 行为 tab 缩进（与其余 2 空格不一致），纯外观 | |
 | 19 | `package-lock.json` | registry 指向 npmmirror 镜像（换 registry 时 lock 仍可复用，integrity 校验兜底） | |
+| 20 | `src/components/detail.ts` | 弹窗标题与导出提示的 alias 插值进 innerHTML 未转义（与 #3/#4 同类，真实别名可控自用场景风险低） | 2026-09-17 详情弹窗新增 |
+| 21 | `src-tauri/src/commands.rs` | `export_log` 的保存对话框与写文件仅在编译+mock 层验证，未真机实测保存路径 | 2026-09-17 新增；下次真机点"导出日志"确认 |
 
 ## 记录在案、无需处理
 
