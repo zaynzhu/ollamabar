@@ -9,10 +9,15 @@ pub struct KeyConfig { pub alias: String, pub api_key: String }
 pub struct AppConfig {
     pub keys: Vec<KeyConfig>,
     pub poll_interval_secs: u64,
+    // 日志保留天数（7/30）；serde default 兼容旧 config.json 缺字段
+    #[serde(default = "default_retention")]
+    pub log_retention_days: u64,
 }
 
+fn default_retention() -> u64 { 7 }
+
 impl Default for AppConfig {
-    fn default() -> Self { AppConfig { keys: vec![], poll_interval_secs: 60 } }
+    fn default() -> Self { AppConfig { keys: vec![], poll_interval_secs: 60, log_retention_days: 7 } }
 }
 
 pub fn load(path: &Path) -> std::io::Result<AppConfig> {
@@ -44,7 +49,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("ollamabar-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("config.json");
-        let cfg = AppConfig { keys: vec![KeyConfig { alias: "工作".into(), api_key: "sk-x".into() }], poll_interval_secs: 60 };
+        let cfg = AppConfig { keys: vec![KeyConfig { alias: "工作".into(), api_key: "sk-x".into() }], poll_interval_secs: 60, log_retention_days: 7 };
         save(&path, &cfg).unwrap();
         assert_eq!(load(&path).unwrap(), cfg);
         std::fs::remove_dir_all(&dir).unwrap();
@@ -54,5 +59,16 @@ mod tests {
     fn 缺文件返回默认空配置() {
         let path = std::env::temp_dir().join("ollamabar-nonexist-xyz.json");
         assert!(load(&path).unwrap().keys.is_empty());
+    }
+
+    #[test]
+    fn 旧配置缺保留天数字段回退默认7() {
+        let dir = std::env::temp_dir().join(format!("ollamabar-retention-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.json");
+        std::fs::write(&path, r#"{"keys":[],"poll_interval_secs":60}"#).unwrap();
+        let cfg = load(&path).unwrap();
+        assert_eq!(cfg.log_retention_days, 7);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -14,6 +14,18 @@ pub struct RawUsage {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FetchError { Network, Auth, Http, Parse }
 
+impl FetchError {
+    /// 日志与横幅共用的中文文案
+    pub fn text(&self) -> &'static str {
+        match self {
+            FetchError::Network => "网络请求失败或超时",
+            FetchError::Auth => "key 无效或已撤销（HTTP 401/403）",
+            FetchError::Http => "HTTP 状态异常",
+            FetchError::Parse => "返回结构解析失败（接口可能已变更）",
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct ModelRaw { name: String, request_count: i64 }
 

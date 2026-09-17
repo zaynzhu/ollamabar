@@ -94,6 +94,11 @@ async fn do_fetch(
             }
             Err(e) => {
                 runtime.apply_failure(e, now);
+                // 失败留痕（对齐 ps1 脚本的 ERROR 行）：错误也进日志，尽力而为，通道满即弃
+                let _ = store_tx.try_send(StoreMsg::Event {
+                    alias: alias.into(), ts: now.to_rfc3339(),
+                    kind: "error".into(), message: e.text().into(),
+                });
                 // 失败分支无常规消息产出，补一条脏标记驱动写者推 state-changed（尽力而为，通道满即弃）
                 let _ = store_tx.try_send(StoreMsg::StateDirty);
                 (false, Vec::new())

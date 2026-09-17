@@ -45,12 +45,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::get_history,
             commands::add_key,
             commands::remove_key,
-            commands::refresh_now
+            commands::refresh_now,
+            commands::get_log,
+            commands::get_retention,
+            commands::set_retention,
+            commands::export_log
         ])
         .on_window_event(tray::handle_window_event)
         .setup(|app| {
@@ -63,6 +68,11 @@ pub fn run() {
 
             let mut store = store::Store::open(&db_path.to_string_lossy())?;
             let (store_tx, mut store_rx) = tokio::sync::mpsc::channel::<store::StoreMsg>(64);
+            let cleanup_tx = store_tx.clone();
+            // 启动即按保留期清理一次过期日志（默认 7 天）
+            let retention_days = config::load(&config_path)
+                .map(|c| c.log_retention_days).unwrap_or(7) as i64;
+            let _ = store_tx.try_send(store::StoreMsg::Cleanup { days: retention_days });
             let runtime: Arc<Mutex<HashMap<String, state::KeyRuntime>>> =
                 Arc::new(Mutex::new(HashMap::new()));
             app.manage(Ctx {
@@ -83,6 +93,14 @@ pub fn run() {
                         store::StoreMsg::ResetEvent { alias, observed_at, kind } => {
                             store.insert_reset_event(&alias, &observed_at, &kind)
                         }
+                        store::StoreMsg::Event { alias, ts, kind, message } => {
+                            store.insert_event(&alias, &ts, &kind, &message)
+                        }
+                        store::StoreMsg::Cleanup { days } => {
+                            store.delete_before(days).map(|(s, e)| {
+                                if s + e > 0 { eprintln!("日志清理：删除 {} 条样本、{} 条事件", s, e); }
+                            })
+                        }
                         store::StoreMsg::StateDirty => Ok(()), // 仅触发推送，不写库
                     };
                     if let Err(e) = res { eprintln!("store 写入失败: {e}"); }
@@ -96,6 +114,18 @@ pub fn run() {
             for key in cfg.keys {
                 spawn_key_task(app.handle(), &ctx_state, &key);
             }
+
+            // 每日保留清理：每 24h 重读配置的保留天数，发 Cleanup 给写者任务
+            let daily_tx = cleanup_tx;
+            let daily_cfg_path = config_path.clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(86400)).await;
+                    let days = config::load(&daily_cfg_path)
+                        .map(|c| c.log_retention_days).unwrap_or(7) as i64;
+                    let _ = daily_tx.try_send(store::StoreMsg::Cleanup { days });
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
