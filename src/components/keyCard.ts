@@ -17,6 +17,7 @@ export function renderKeyCard(ks: KeyState): string {
   return `
   <section class="card" data-alias="${ks.alias}">
     <header><h3>${ks.alias}</h3><button class="refresh" data-refresh="${ks.alias}">刷新</button>
+      <button class="detail" data-detail="${ks.alias}">详情</button>
       <button class="remove" data-remove="${ks.alias}">删除</button></header>
     ${banner}
     <div class="rings">

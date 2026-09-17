@@ -3,6 +3,7 @@ import { getState, onStateChanged, refreshNow, removeKey, addKey, getHistory } f
 import { renderKeyCard } from './components/keyCard'
 import { renderModelBars } from './components/modelBars'
 import { renderHistoryLine } from './components/historyLine'
+import { openDetail } from './components/detail'
 import type { AppState } from './types'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
@@ -46,6 +47,7 @@ function render(state: AppState) {
 app.addEventListener('click', async (e) => {
   const t = e.target as HTMLElement
   if (t.dataset.refresh) await refreshNow(t.dataset.refresh)
+  if (t.dataset.detail) await openDetail(t.dataset.detail)
   if (t.dataset.remove && confirm('删除该 key？历史采样保留')) await removeKey(t.dataset.remove)
 })
 

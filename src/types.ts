@@ -26,3 +26,14 @@ export interface Sample {
 }
 
 export type RefreshResult = 'updated' | 'rate_limited' | 'failed'
+
+// 详情弹窗的日志行：kind ok=成功采样 error=取数失败 reset=实测重置
+export interface LogEntry {
+  ts: string
+  kind: 'ok' | 'error' | 'reset'
+  session_pct: number | null
+  weekly_pct: number | null
+  session_req: number | null
+  weekly_req: number | null
+  message: string | null
+}

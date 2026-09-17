@@ -1,6 +1,6 @@
 // src/api.ts
-import type { AppState, RefreshResult, Sample } from './types'
-import { mockGetState, mockGetHistory, mockAddKey, mockRemoveKey, mockRefreshNow, mockOnStateChanged } from './mock'
+import type { AppState, LogEntry, RefreshResult, Sample } from './types'
+import { mockGetState, mockGetHistory, mockAddKey, mockRemoveKey, mockRefreshNow, mockOnStateChanged, mockGetLog, mockGetRetention, mockSetRetention, mockExportLog } from './mock'
 
 // 纯前端 dev server 下无 Tauri 注入，自动走 mock；真机走契约
 const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -33,6 +33,31 @@ export async function refreshNow(alias: string): Promise<RefreshResult> {
   if (!inTauri) return mockRefreshNow(alias)
   const { invoke } = await import('@tauri-apps/api/core')
   return invoke('refresh_now', { alias })
+}
+
+export async function getLog(alias: string): Promise<LogEntry[]> {
+  if (!inTauri) return mockGetLog(alias)
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke('get_log', { alias })
+}
+
+export async function getRetention(): Promise<number> {
+  if (!inTauri) return mockGetRetention()
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke('get_retention')
+}
+
+export async function setRetention(days: number): Promise<void> {
+  if (!inTauri) return mockSetRetention(days)
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke('set_retention', { days })
+}
+
+// 导出成功返回保存路径，用户取消返回 null
+export async function exportLog(alias: string): Promise<string | null> {
+  if (!inTauri) return mockExportLog(alias)
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke('export_log', { alias })
 }
 
 export function onStateChanged(cb: (s: AppState) => void): () => void {

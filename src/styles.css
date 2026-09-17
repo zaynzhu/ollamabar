@@ -37,3 +37,26 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #11151c; color
 .card header button { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 5px; padding: 3px 10px; font-size: 11px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
 .card header button:hover { color: #e6edf3; border-color: #8b949e; }
 .card header button.remove:hover { color: #f85149; border-color: #f85149; }
+
+/* —— 详情日志弹窗 —— */
+.modal-back { position: fixed; inset: 0; background: rgba(1, 4, 9, 0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+.modal { background: #161b22; border: 1px solid #30363d; border-radius: 10px; width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.modal header { display: flex; align-items: center; gap: 12px; }
+.modal h3 { margin: 0; font-size: 15px; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-hint { margin: 0; font-size: 11px; color: #8b949e; }
+.log-retention, .log-filter { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #8b949e; white-space: nowrap; }
+#logRetention { background: #0d1117; border: 1px solid #30363d; border-radius: 5px; color: #e6edf3; padding: 3px 6px; font-size: 12px; }
+.log-export, .log-close { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 5px; padding: 3px 10px; font-size: 11px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.log-export:hover, .log-close:hover { color: #e6edf3; border-color: #8b949e; }
+.log-table-wrap { overflow-y: auto; min-height: 120px; }
+.log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.log-table th { position: sticky; top: 0; background: #161b22; text-align: left; color: #8b949e; font-weight: 500; padding: 4px 8px; border-bottom: 1px solid #30363d; }
+.log-table td { padding: 4px 8px; border-bottom: 1px solid #21262d; vertical-align: top; }
+.log-table .log-ts { color: #8b949e; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.log-ok { color: #3fb950; }
+.log-err { color: #f85149; font-weight: 600; }
+.log-reset { color: #d29922; font-weight: 600; }
+.log-msg { color: #8b949e; margin-left: 6px; }
+.log-empty { text-align: center; color: #8b949e; padding: 16px 0 !important; }
+tr.log-error td { background: rgba(248, 81, 73, 0.05); }
+tr.log-reset td { background: rgba(210, 153, 34, 0.05); }

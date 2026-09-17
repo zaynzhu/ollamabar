@@ -1,5 +1,5 @@
 // src/mock.ts —— 覆盖四种 failure_level、空 models、多 key、滞后场景的假数据工厂
-import type { AppState, ModelStat, Sample, UsageSnapshot } from './types'
+import type { AppState, LogEntry, ModelStat, Sample, UsageSnapshot } from './types'
 
 const snap = (over: Partial<UsageSnapshot>): UsageSnapshot => ({
   session_pct: 9.2, weekly_pct: 41.3,
@@ -56,6 +56,29 @@ export const mockGetHistory = (_alias: string, _hours: number): Sample[] => {
 export const mockAddKey = async (_alias: string, _apiKey: string) => {}
 export const mockRemoveKey = async (_alias: string) => {}
 export const mockRefreshNow = async (_alias: string): Promise<'updated'> => 'updated'
+
+export const mockGetLog = (_alias: string): LogEntry[] => {
+  // 三类行混合：成功采样、取数错误、实测重置（错误文案与后端 FetchError::text 对齐）
+  const mk = (minAgo: number, over: Partial<LogEntry>): LogEntry => ({
+    ts: new Date(Date.now() - minAgo * 60e3).toISOString(),
+    kind: 'ok', session_pct: 4.2, weekly_pct: 12.7,
+    session_req: 106, weekly_req: 328, message: null,
+    ...over,
+  })
+  return [
+    mk(1, {}),
+    mk(2, { kind: 'error', message: '网络请求失败或超时' }),
+    mk(3, {}),
+    mk(5, { kind: 'reset', message: '5h 窗口重置（实测）' }),
+    mk(6, { session_pct: 0.2, weekly_pct: 12.5, session_req: 2, weekly_req: 326 }),
+    mk(7, { kind: 'error', message: 'key 无效或已撤销（HTTP 401/403）' }),
+    mk(10, { session_pct: 12.4, weekly_pct: 12.3, session_req: 310, weekly_req: 322 }),
+  ]
+}
+export const mockGetRetention = (): number => 7
+export const mockSetRetention = async (_days: number) => {}
+export const mockExportLog = async (_alias: string): Promise<string> => 'C:\\mock\\ollamabar-export.txt'
+
 export const mockOnStateChanged = (cb: (s: AppState) => void) => {
   const t = setInterval(() => cb(mockGetState()), 5000)
   return () => clearInterval(t)
