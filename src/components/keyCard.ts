@@ -24,6 +24,8 @@ export function renderKeyCard(ks: KeyState): string {
       ${renderRing(s.weekly_pct, '本周')}
     </div>
     <p class="resets"><span>5h：${countdown(s.session_reset_est)}（预计）</span><span>周：${countdown(s.weekly_reset_est)}（预计）</span></p>
+    <p class="models-title">5h 模型调用</p>
+    <div class="models" data-session-models="${ks.alias}"></div>
     <p class="models-title">本周模型调用</p>
     <div class="models" data-models="${ks.alias}"></div>
     <div class="history" data-history="${ks.alias}"></div>

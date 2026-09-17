@@ -16,6 +16,8 @@ async function fillCharts(state: AppState, seq: number) {
     // 渲染已过期就不再填 DOM
     if (seq !== renderSeq) return
     const snap = ks.snapshot
+    const sbox = app.querySelector<HTMLElement>(`[data-session-models="${ks.alias}"]`)
+    if (sbox && snap) sbox.innerHTML = renderModelBars(snap.session_models)
     const box = app.querySelector<HTMLElement>(`[data-models="${ks.alias}"]`)
     if (box && snap) box.innerHTML = renderModelBars(snap.weekly_models)
     const hist = app.querySelector<HTMLElement>(`[data-history="${ks.alias}"]`)
