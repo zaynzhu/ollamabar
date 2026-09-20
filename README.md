@@ -29,7 +29,7 @@ OllamaBar 是一个跨 Windows / macOS 的 Ollama Cloud 多 Key 用量托盘查�
 - **诚实历史曲线** -- 每 60 秒采样入库（SQLite WAL），原样呈现窗口内累计份额的锯齿形状，不做平滑修饰
 - **三级失效告警** -- key 无效、数据滞后、接口疑似失效分三档提示，拒绝静默展示过期数据
 - **托盘常驻** -- 关闭窗口即隐藏，后台持续采样，托盘一键唤回
-- **开机自启** -- 托盘右键勾选"开机启动"，写入当前用户注册表 Run 项，无需管理员权限
+- **开机自启** -- 托盘右键勾选"开机启动"：Windows 写入当前用户注册表 Run 项，macOS 注册 LaunchAgent，均无需管理员权限
 - **运行日志与导出** -- 卡片"详情"弹窗查看每轮采样、错误与重置记录；默认保留 7 天（可切 30 天）自动清理，可导出 txt
 - **跨平台** -- 同一份 Rust 后端 + 前端代码跑 Windows 与 macOS
 
@@ -69,9 +69,12 @@ npm run tauri build
 
 | 产物 | 路径 |
 |------|------|
-| 独立可执行文件 | `ollamabar.exe` |
-| NSIS 安装包 | `bundle/nsis/OllamaBar_x.y.z_x64-setup.exe` |
-| MSI 安装包 | `bundle/msi/OllamaBar_x.y.z_x64_en-US.msi` |
+| 独立可执行文件（Windows） | `ollamabar.exe` |
+| NSIS 安装包（Windows） | `bundle/nsis/OllamaBar_x.y.z_x64-setup.exe` |
+| MSI 安装包（Windows） | `bundle/msi/OllamaBar_x.y.z_x64_en-US.msi` |
+| macOS 安装包 | `bundle/dmg/OllamaBar_x.y.z_aarch64.dmg` |
+
+另有 tag 触发的 GitHub Actions（`.github/workflows/release.yml`）：推送 `v*` 标签即自动构建 aarch64 与 x86_64 的 macOS dmg 并发布 Release。
 
 ### 环境要求
 
@@ -130,7 +133,7 @@ OllamaBar 的托盘形态参考 [CodexBar](https://github.com/steipete/CodexBar)
 |------|------|------|
 | 数据 | 跨周长期"最常用模型"统计 | 📋 Planned |
 | 数据 | 用量速率推算曲线（本地积分，标注推算） | 📋 Planned |
-| 平台 | macOS 构建产物与托盘 template 图标 | 📋 Planned |
+| 平台 | macOS 托盘 template 图标 | 📋 Planned |
 | 体验 | 额度告警通知推送 | 📋 Planned |
 
 ## ❓ FAQ
@@ -166,7 +169,7 @@ OllamaBar 的托盘形态参考 [CodexBar](https://github.com/steipete/CodexBar)
 <details>
 <summary>macOS 版怎么构建？</summary>
 
-在 macOS 上 clone 仓库后 `npm install && npm run tauri build`。需要 Xcode Command Line Tools。当前仓库在 Windows 上开发验证，macOS 构建产物列入 Roadmap。
+在 macOS 上 clone 仓库后 `npm install && npm run tauri build`。需要 Xcode Command Line Tools；产物为 `bundle/dmg/` 下的 dmg。也可以推送 `v*` 标签让 GitHub Actions 自动构建并发布 Release。
 
 </details>
 

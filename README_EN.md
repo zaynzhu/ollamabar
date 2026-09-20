@@ -30,7 +30,7 @@ OllamaBar is a cross-platform (Windows / macOS) tray-resident usage viewer for O
 - **Honest History** -- Sampled every 60s into SQLite (WAL); the sawtooth shape of in-window cumulative usage is rendered as-is, never smoothed
 - **Three-Level Failure Alerts** -- Invalid key, stale data, and suspected API death are reported separately — no silently stale numbers
 - **Tray-Resident** -- Closing the window hides it; sampling continues in the background, one click to bring it back
-- **Autostart on Boot** -- Toggle "start on boot" from the tray menu; writes a per-user Run registry entry, no admin rights needed
+- **Autostart on Boot** -- Toggle "start on boot" from the tray menu: writes a per-user Run registry entry on Windows and a LaunchAgent on macOS; no admin rights needed
 - **Run Logs & Export** -- The "Details" dialog on each card lists every sample, error, and reset; retained 7 days by default (switchable to 30) with auto-cleanup, exportable as txt
 - **Cross-Platform** -- One Rust backend + web frontend codebase running on Windows and macOS
 
@@ -71,9 +71,12 @@ Artifacts land in `src-tauri/target/release/`:
 
 | Artifact | Path |
 |----------|------|
-| Standalone executable | `ollamabar.exe` |
-| NSIS installer | `bundle/nsis/OllamaBar_x.y.z_x64-setup.exe` |
-| MSI installer | `bundle/msi/OllamaBar_x.y.z_x64_en-US.msi` |
+| Standalone executable (Windows) | `ollamabar.exe` |
+| NSIS installer (Windows) | `bundle/nsis/OllamaBar_x.y.z_x64-setup.exe` |
+| MSI installer (Windows) | `bundle/msi/OllamaBar_x.y.z_x64_en-US.msi` |
+| macOS installer | `bundle/dmg/OllamaBar_x.y.z_aarch64.dmg` |
+
+A tag-triggered GitHub Actions workflow (`.github/workflows/release.yml`) also exists: push a `v*` tag to build aarch64 and x86_64 macOS dmgs and publish them as a Release automatically.
 
 ### Requirements
 
@@ -132,7 +135,7 @@ OllamaBar's tray form factor is inspired by [CodexBar](https://github.com/steipe
 |------|---------|--------|
 | Data | Cross-week "most used models" statistics | 📋 Planned |
 | Data | Derived usage-rate curve (local integration, labeled as derived) | 📋 Planned |
-| Platform | macOS build artifacts with tray template icon | 📋 Planned |
+| Platform | macOS tray template icon | 📋 Planned |
 | UX | Quota alert notifications | 📋 Planned |
 
 ## ❓ FAQ
@@ -168,7 +171,7 @@ Because that is what the data looks like: the API returns the cumulative share w
 <details>
 <summary>How do I build the macOS version?</summary>
 
-Clone the repo on macOS and run `npm install && npm run tauri build`. Xcode Command Line Tools required. The repo is developed and verified on Windows; macOS artifacts are on the roadmap.
+Clone the repo on macOS and run `npm install && npm run tauri build`. Xcode Command Line Tools required; the dmg lands in `bundle/dmg/`. Alternatively, push a `v*` tag and let GitHub Actions build and publish the Release for you.
 
 </details>
 
