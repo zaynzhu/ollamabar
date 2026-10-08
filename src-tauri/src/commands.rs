@@ -113,15 +113,19 @@ pub async fn export_log(app: AppHandle, ctx: State<'_, Ctx>, alias: String) -> R
         let store = store::Store::open(&db_path.to_string_lossy()).map_err(|e| e.to_string())?;
         let rows = store.log_rows(&alias, usize::MAX).map_err(|e| e.to_string())?;
         let mut lines = vec![format!("===== OllamaBar {} 导出于 {} =====", alias, chrono::Local::now().format("%Y-%m-%d %H:%M:%S"))];
+        let opt_pct = |v: Option<f64>| v.map(|x| format!("{x:.2}%")).unwrap_or_else(|| "-".into());
+        let opt_n = |v: Option<i64>| v.map(|x| x.to_string()).unwrap_or_else(|| "-".into());
         for r in rows.iter().rev() { // 导出按时间正序，与 ps1 日志一致
             let ts = chrono::DateTime::parse_from_rfc3339(&r.ts)
                 .map(|t| t.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M:%S").to_string())
                 .unwrap_or_else(|_| r.ts.clone());
             match r.kind.as_str() {
+                // used/week 通用化（usage_based 套餐无 5h/周窗口时为 "-"）；
+                // 模型请求(5h/周) 保留显示升级前的历史数据，新行为 "-"
                 "ok" => lines.push(format!(
-                    "{} | 5h={:.2}% req={} | week={:.2}% req={} | server={}",
-                    ts, r.session_pct.unwrap_or(0.0), r.session_req.unwrap_or(0),
-                    r.weekly_pct.unwrap_or(0.0), r.weekly_req.unwrap_or(0),
+                    "{} | used={} | week={} | 24h_req={} | 模型请求(5h/周)={}/{} | reset={}",
+                    ts, opt_pct(r.session_pct), opt_pct(r.weekly_pct), opt_n(r.requests_24h),
+                    opt_n(r.session_req), opt_n(r.weekly_req),
                     r.message.as_deref().unwrap_or("-"))),
                 "reset" => lines.push(format!("{} | RESET | {}", ts, r.message.as_deref().unwrap_or(""))),
                 _ => lines.push(format!("{} | ERROR | {}", ts, r.message.as_deref().unwrap_or("未知错误"))),

@@ -195,6 +195,7 @@ async fn do_fetch(
                     session_models: vec![], weekly_models: vec![],
                     // 列复用：server_time 列存服务端 session resets_at（日志备注列展示）
                     server_time: balance.session_resets_at.clone(),
+                    requests_24h: runtime.requests_24h(),
                 }));
                 (RefreshResult::Updated, msgs)
             }

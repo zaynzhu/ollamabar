@@ -9,6 +9,7 @@ pub struct SampleRow {
     pub session_pct: f64, pub weekly_pct: Option<f64>, // Legacy 恒有值；usage_based 无周窗口为 None
     pub session_models: Vec<ModelStat>, pub weekly_models: Vec<ModelStat>,
     pub server_time: Option<String>, // 列复用：存服务端 session resets_at（日志备注列展示）
+    pub requests_24h: Option<i64>,  // 近 24h 总请求数（统计端点轮转），旧行为 NULL
 }
 
 impl From<SampleRow> for Sample {
@@ -36,8 +37,9 @@ pub struct LogEntry {
     pub kind: String, // ok | error | reset
     pub session_pct: Option<f64>,
     pub weekly_pct: Option<f64>,
-    pub session_req: Option<i64>,
+    pub session_req: Option<i64>,  // 旧接口模型求和（升级前历史行有值，新行 None）
     pub weekly_req: Option<i64>,
+    pub requests_24h: Option<i64>, // 近 24h 总请求数（升级后新增）
     pub message: Option<String>,
 }
 
@@ -50,7 +52,8 @@ CREATE TABLE IF NOT EXISTS samples (
   fetched_at TEXT NOT NULL,
   session_pct REAL, weekly_pct REAL,
   session_models_json TEXT, weekly_models_json TEXT,
-  server_time TEXT
+  server_time TEXT,
+  requests_24h INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_samples_alias_ts ON samples(alias, fetched_at);
 CREATE TABLE IF NOT EXISTS reset_events (
@@ -69,11 +72,24 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_alias_ts ON events(alias, ts);
 ";
 
+/// 旧库迁移：samples 缺 requests_24h 列则补（存量行为 NULL），幂等
+fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    let has: bool = {
+        let mut stmt = conn.prepare("PRAGMA table_info(samples)")?;
+        let names: Vec<String> = stmt.query_map([], |r| r.get::<_, String>(1))?
+            .filter_map(|x| x.ok()).collect();
+        names.iter().any(|n| n == "requests_24h")
+    };
+    if !has { conn.execute("ALTER TABLE samples ADD COLUMN requests_24h INTEGER", [])?; }
+    Ok(())
+}
+
 impl Store {
     pub fn open(path: &str) -> rusqlite::Result<Store> {
         let conn = Connection::open(path)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.execute_batch(SCHEMA)?;
+        migrate(&conn)?;
         Ok(Store { conn })
     }
 
@@ -91,12 +107,12 @@ impl Store {
 
     pub fn insert_sample(&mut self, r: &SampleRow) -> rusqlite::Result<()> {
         self.conn.execute(
-            "INSERT INTO samples (alias, fetched_at, session_pct, weekly_pct, session_models_json, weekly_models_json, server_time)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO samples (alias, fetched_at, session_pct, weekly_pct, session_models_json, weekly_models_json, server_time, requests_24h)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![r.alias, r.fetched_at, r.session_pct, r.weekly_pct,
                 serde_json::to_string(&r.session_models).unwrap_or_default(),
                 serde_json::to_string(&r.weekly_models).unwrap_or_default(),
-                r.server_time],
+                r.server_time, r.requests_24h],
         )?;
         Ok(())
     }
@@ -129,11 +145,12 @@ impl Store {
     pub fn log_rows(&self, alias: &str, limit: usize) -> rusqlite::Result<Vec<LogEntry>> {
         let mut out: Vec<LogEntry> = Vec::new();
         let mut stmt = self.conn.prepare(
-            "SELECT fetched_at, session_pct, weekly_pct, session_models_json, weekly_models_json, server_time
+            "SELECT fetched_at, session_pct, weekly_pct, session_models_json, weekly_models_json, server_time, requests_24h
                FROM samples WHERE alias=?1")?;
         let rows = stmt.query_map([alias], |r| {
-            let session_json: String = r.get(3)?;
-            let weekly_json: String = r.get(4)?;
+            // 旧行的 models JSON 可能为 NULL（迁移库/手工数据）：NULL 视为空数组
+            let session_json: Option<String> = r.get(3)?;
+            let weekly_json: Option<String> = r.get(4)?;
             let sum_req = |json: &str| -> Option<i64> {
                 serde_json::from_str::<Vec<ModelStat>>(json).ok()
                     .map(|ms| ms.iter().map(|m| m.request_count).sum())
@@ -143,9 +160,10 @@ impl Store {
                 kind: "ok".into(),
                 session_pct: r.get(1)?,
                 weekly_pct: r.get(2)?,
-                session_req: sum_req(&session_json),
-                weekly_req: sum_req(&weekly_json),
-                message: r.get(5)?, // server_time 借备注列展示
+                session_req: sum_req(session_json.as_deref().unwrap_or("")),
+                weekly_req: sum_req(weekly_json.as_deref().unwrap_or("")),
+                requests_24h: r.get(6)?,
+                message: r.get(5)?, // server_time（现存 resets_at）借备注列展示
             })
         })?;
         for row in rows { out.push(row?); }
@@ -154,6 +172,7 @@ impl Store {
         let rows = stmt.query_map([alias], |r| Ok(LogEntry {
             ts: r.get(0)?, kind: r.get(1)?,
             session_pct: None, weekly_pct: None, session_req: None, weekly_req: None,
+            requests_24h: None,
             message: r.get(2)?,
         }))?;
         for row in rows { out.push(row?); }
@@ -165,6 +184,7 @@ impl Store {
                 ts: r.get(0)?,
                 kind: "reset".into(),
                 session_pct: None, weekly_pct: None, session_req: None, weekly_req: None,
+                requests_24h: None,
                 message: Some(if kind == "weekly" { "每周窗口重置（实测）".into() } else { "5h 窗口重置（实测）".into() }),
             })
         })?;
@@ -178,15 +198,16 @@ impl Store {
     pub fn history(&self, alias: &str, hours: i64) -> rusqlite::Result<Vec<SampleRow>> {
         let cutoff = (Utc::now() - chrono::Duration::hours(hours)).to_rfc3339();
         let mut stmt = self.conn.prepare(
-            "SELECT fetched_at, session_pct, weekly_pct, session_models_json, server_time
+            "SELECT fetched_at, session_pct, weekly_pct, session_models_json, server_time, requests_24h
                FROM samples WHERE alias=?1 AND fetched_at >= ?2 ORDER BY fetched_at ASC")?;
         let rows = stmt.query_map(rusqlite::params![alias, cutoff], |r| {
-            let models_json: String = r.get(3)?;
+            let models_json: Option<String> = r.get(3)?; // 旧行可能为 NULL
             Ok(SampleRow {
                 alias: alias.into(), fetched_at: r.get(0)?,
                 session_pct: r.get(1)?, weekly_pct: r.get(2)?,
-                session_models: serde_json::from_str(&models_json).unwrap_or_default(),
+                session_models: serde_json::from_str(models_json.as_deref().unwrap_or("[]")).unwrap_or_default(),
                 weekly_models: vec![], server_time: r.get(4)?,
+                requests_24h: r.get(5)?,
             })
         })?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
@@ -204,7 +225,7 @@ mod tests {
             alias: alias.into(), fetched_at: ts.into(),
             session_pct: pct, weekly_pct: Some(pct * 2.0),
             session_models: vec![ModelStat { name: "m".into(), request_count: 1 }],
-            weekly_models: vec![], server_time: None,
+            weekly_models: vec![], server_time: None, requests_24h: None,
         }
     }
 
@@ -267,5 +288,51 @@ mod tests {
         let (s, e) = store.delete_before(7).unwrap();
         assert_eq!((s, e), (1, 1));
         assert_eq!(store.log_rows("k1", 100).unwrap().len(), 1); // 只剩 fresh 样本
+    }
+
+    #[test]
+    fn 旧库迁移自动补requests_24h列() {
+        // 临时目录手工建旧 schema 库（无 requests_24h 列），open 应自动补列且旧数据可读
+        let path = std::env::temp_dir().join(format!("ollamabar-migrate-{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE samples (id INTEGER PRIMARY KEY, alias TEXT NOT NULL, fetched_at TEXT NOT NULL,
+                 session_pct REAL, weekly_pct REAL, session_models_json TEXT, weekly_models_json TEXT, server_time TEXT);
+                 INSERT INTO samples (alias, fetched_at, session_pct) VALUES ('k1', '2026-09-15T00:00:00+00:00', 5.0)").unwrap();
+        }
+        let store = Store::open(path.to_str().unwrap()).unwrap(); // open 触发迁移
+        let names: Vec<String> = {
+            let mut stmt = store.conn.prepare("PRAGMA table_info(samples)").unwrap();
+            stmt.query_map([], |r| r.get::<_, String>(1)).unwrap()
+                .filter_map(|x| x.ok()).collect()
+        };
+        assert!(names.iter().any(|n| n == "requests_24h"));
+        let log = store.log_rows("k1", 100).unwrap();
+        assert_eq!(log.len(), 1);
+        assert_eq!(log[0].requests_24h, None); // 旧行该列为 NULL
+        drop(store); // Windows 下 WAL 连接持有句柄，先 drop 才能删文件
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("db-wal"));
+        let _ = std::fs::remove_file(path.with_extension("db-shm"));
+    }
+
+    #[test]
+    fn requests_24h入库往返与日志携带() {
+        let mut store = Store::open_in_memory().unwrap();
+        let ts = Utc::now().to_rfc3339();
+        let mut r = row("k1", &ts, 5.0);
+        r.requests_24h = Some(87);
+        store.insert_sample(&r).unwrap();
+        let log = store.log_rows("k1", 100).unwrap();
+        assert_eq!(log[0].requests_24h, Some(87));
+        let h = store.history("k1", 24).unwrap();
+        assert_eq!(h[0].requests_24h, Some(87));
+        // 未带值（None）写入后读回 None
+        let ts2 = (Utc::now() + chrono::Duration::seconds(1)).to_rfc3339();
+        store.insert_sample(&row("k1", &ts2, 6.0)).unwrap();
+        let log2 = store.log_rows("k1", 100).unwrap();
+        assert_eq!(log2[0].requests_24h, None); // 倒序：新行在前
     }
 }

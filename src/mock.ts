@@ -62,7 +62,7 @@ export const mockGetLog = (_alias: string): LogEntry[] => {
   const mk = (minAgo: number, over: Partial<LogEntry>): LogEntry => ({
     ts: new Date(Date.now() - minAgo * 60e3).toISOString(),
     kind: 'ok', session_pct: 4.2, weekly_pct: 12.7,
-    session_req: 106, weekly_req: 328, message: null,
+    session_req: 106, weekly_req: 328, requests_24h: 87, message: null,
     ...over,
   })
   return [

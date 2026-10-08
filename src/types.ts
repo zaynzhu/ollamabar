@@ -33,7 +33,8 @@ export interface LogEntry {
   kind: 'ok' | 'error' | 'reset'
   session_pct: number | null
   weekly_pct: number | null
-  session_req: number | null
+  session_req: number | null   // 旧接口模型求和（升级前历史行有值，新行 null）
   weekly_req: number | null
+  requests_24h: number | null  // 近 24h 总请求数（升级后新增）
   message: string | null
 }

@@ -142,6 +142,9 @@ impl KeyRuntime {
         }
     }
 
+    /// 当前已合并的近 24h 请求数（供采样入库）
+    pub fn requests_24h(&self) -> Option<i64> { self.req_24h }
+
     /// 组装给前端的快照：失败时保留上次成功数据并附滞后信息（H4 禁止静默空壳）
     pub fn build_snapshot(&mut self, now: DateTime<Utc>) -> UsageSnapshot {
         let mut snap = match self.last_snapshot.take() {
