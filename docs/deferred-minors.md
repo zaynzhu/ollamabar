@@ -29,6 +29,12 @@
 | 21 | `src-tauri/src/commands.rs` | `export_log` 的保存对话框与写文件仅在编译+mock 层验证，未真机实测保存路径 | 2026-09-17 新增；下次真机点"导出日志"确认 |
 | 22 | `src-tauri/src/store.rs` | samples 表 `session_pct` 列对新计费套餐存"本期已用%"，与 Legacy 的"5h 已用%"语义混用一列（历史曲线目前只画 session_pct，无视觉影响） | 2026-10-08 接口升级引入；长期方案为加专列，见 verify-usage.md |
 | 23 | 数据 | 24h/7d/30d 请求统计未入历史曲线（仅卡片/详情/日志行展示）；如需按请求次数画趋势线需扩展 samples 表 | 2026-10-08 新增；官方 buckets 接口已具备数据源 |
+| 24 | `src-tauri/src/state.rs` | session 与 weekly 的 resets_at 同 tick 变化时只记录 Session 重置事件（如长时间离线后双窗口同时推进），Weekly 事件丢失 | 2026-10-08 终审发现；apply_success 返回 Vec 可解 |
+| 25 | `src-tauri/src/state.rs` | resets_at 字符串不可解析时：from_server 仍标 true、H5 不告警、前端 countdown 显示 `--`，三态均无异常提示 | 2026-10-08 终审发现；低概率（服务端给非法时间戳） |
+| 26 | `src-tauri/src/store.rs` | `Sample` 转换层 `weekly_pct.unwrap_or(0.0)` 把缺失周窗口写成 0.0（曲线目前不消费 weekly_pct，无视觉影响） | 2026-10-08 终审发现；与 #22 同类 |
+| 27 | `src-tauri/src/ollama.rs` | `UsageStatsData.window_until` 解析后暂无消费方（保留备用字段） | 2026-10-08 终审发现；如长期无用可删 |
+| 28 | `src/components/keyCard.ts` | "近24h 请求 N 次"未标注统计滞后（实际最多滞后 15 分钟，docs 已声明） | 2026-10-08 终审发现；可加"约"字或 title 提示 |
+| 29 | `src/main.ts` | `refreshNow` 返回的 RefreshResult 未在 UI 消费：429 被拒时点击刷新无反馈（既有行为，非本次引入） | 2026-10-08 终审发现；可加 toast |
 
 ## 记录在案、无需处理
 

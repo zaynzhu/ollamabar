@@ -26,10 +26,12 @@ pub fn spawn_key_task(_app: &tauri::AppHandle, ctx: &Ctx, key: &config::KeyConfi
         let client = client.clone();
         Box::pin(async move {
             let balance = ollama::fetch_balance(&client, poller::BALANCE_URL, &api_key).await;
-            let stats = match plan {
-                poller::FetchPlan::BalanceAndStats { range } =>
+            // balance 失败即短路统计请求：避免 429 时双打注定失败的请求占用共享预算、
+            // 也避免失效 key（401/403）每轮产生两条同根因错误日志
+            let stats = match (&balance, plan) {
+                (Ok(_), poller::FetchPlan::BalanceAndStats { range }) =>
                     Some(ollama::fetch_usage_stats(&client, poller::USAGE_URL, &api_key, range.as_str()).await),
-                poller::FetchPlan::BalanceOnly => None,
+                _ => None,
             };
             ollama::FetchOutcome { balance, stats }
         })

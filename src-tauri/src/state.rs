@@ -60,14 +60,15 @@ impl KeyRuntime {
                 kind: if session_changed { ResetKind::Session } else { ResetKind::Weekly },
                 observed_at: now,
             })
-        } else {
-            // H6 fallback：resets_at 缺失时 session 从高位骤降视为实测窗口重置
+        } else if balance.session_resets_at.is_none() {
+            // H6 fallback：仅当服务端未提供 resets_at 时，session 从高位骤降才视为实测窗口重置；
+            // resets_at 在场时以它为准，骤降可能是服务端口径修正，不得记为"实测"
             match (self.prev_session_pct, session_pct) {
                 (Some(prev), Some(cur)) if prev - cur > DROP_THRESHOLD && cur < prev =>
                     Some(ResetEvent { kind: ResetKind::Session, observed_at: now }),
                 _ => None,
             }
-        };
+        } else { None };
         self.prev_session_pct = session_pct;
 
         // H5：session resets_at 过期超宽限仍未推进 → 服务端语义漂移（resets_at 前进即恢复）
@@ -290,6 +291,16 @@ mod tests {
         assert!(matches!(ev.kind, ResetKind::Session));
         // 小幅波动（已用 2% → 5%）不算重置
         assert!(rt.apply_success(&bal(95.0, None), None, t0 + chrono::Duration::hours(1)).is_none());
+    }
+
+    #[test]
+    fn 服务端resets_at在场时骤降不触发fallback事件() {
+        // 服务端口径修正等场景：resets_at 在场且未推进，用量骤降不得记录为"实测"重置
+        let mut rt = KeyRuntime::new("k1");
+        let t0 = Utc.with_ymd_and_hms(2026, 10, 1, 4, 0, 0).unwrap();
+        rt.apply_success(&bal(40.0, Some("2026-10-01T05:00:00Z")), None, t0); // 已用 60%
+        let ev = rt.apply_success(&bal(98.0, Some("2026-10-01T05:00:00Z")), None, t0 + chrono::Duration::hours(1));
+        assert!(ev.is_none());
     }
 
     #[test]

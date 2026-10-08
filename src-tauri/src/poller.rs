@@ -144,9 +144,10 @@ async fn poll_once(
         st.pause_until = None; // 暂停期满，恢复正常轮询
     }
     if st.last_req.elapsed() < cfg.min_gap { return RefreshResult::RateLimited; } // 与手动刷新共享限流窗口
-    let plan = advance_plan(&mut st.tick, &mut st.rotor);
-    let permits = match plan { FetchPlan::BalanceOnly => 1, FetchPlan::BalanceAndStats { .. } => 2 };
+    // 预算先于 tick/rotor 推进：拒绝时统计档位顺延到下轮，不白耗（与 advance_plan 的档位判定保持同步）
+    let permits = if (st.tick + 1) % STATS_EVERY == 0 { 2 } else { 1 };
     if !budget.acquire(permits) { return RefreshResult::RateLimited; } // 全局预算不足：跳过本 tick，下轮自动补
+    let plan = advance_plan(&mut st.tick, &mut st.rotor);
     st.last_req = tokio::time::Instant::now();
     do_fetch(alias, api_key, plan, fetch, store_tx, app_state, budget, st).await
 }
