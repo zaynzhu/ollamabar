@@ -9,6 +9,11 @@ pub enum FailureLevel { None, Degraded, InvalidKey, Dead }
 #[serde(rename_all = "snake_case")]
 pub enum RefreshResult { Updated, RateLimited, Failed }
 
+/// 套餐类型：Legacy（session/weekly 百分比）| UsageBased（美元余额/额度），由 /api/balance 结构判定
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlanType { Legacy, UsageBased }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelStat { pub name: String, pub request_count: i64 }
 
