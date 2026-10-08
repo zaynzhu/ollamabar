@@ -1,5 +1,5 @@
-// 环形进度：纯 SVG，无依赖
-export function renderRing(pct: number | null, label: string): string {
+// 环形进度：纯 SVG，无依赖；sub 为可选副标签（如美元余额）
+export function renderRing(pct: number | null, label: string, sub?: string): string {
   const v = pct == null ? 0 : Math.max(0, Math.min(100, pct))
   const r = 42, c = 2 * Math.PI * r
   const color = v >= 90 ? '#f85149' : v >= 70 ? '#d29922' : '#3fb950'
@@ -12,6 +12,7 @@ export function renderRing(pct: number | null, label: string): string {
         stroke-linecap="round" transform="rotate(-90 50 50)"/>
       <text x="50" y="47" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="600">${pct == null ? '--' : Math.round(v) + '%'}</text>
       <text x="50" y="66" text-anchor="middle" fill="#8b949e" font-size="11">${label}</text>
+      ${sub ? `<text x="50" y="80" text-anchor="middle" fill="#8b949e" font-size="9">${sub}</text>` : ''}
     </svg>
   </div>`
 }

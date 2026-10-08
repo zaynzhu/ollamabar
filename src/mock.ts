@@ -1,13 +1,18 @@
-// src/mock.ts —— 覆盖四种 failure_level、空 models、多 key、滞后场景的假数据工厂
+// src/mock.ts —— 覆盖双套餐、四种 failure_level、模型占位两态、多 key、滞后场景的假数据工厂
 import type { AppState, LogEntry, ModelStat, Sample, UsageSnapshot } from './types'
 
 const snap = (over: Partial<UsageSnapshot>): UsageSnapshot => ({
+  plan_type: 'legacy',
   session_pct: 9.2, weekly_pct: 41.3,
   session_reset_est: new Date(Date.now() + 3 * 3600e3).toISOString(),
   weekly_reset_est: new Date(Date.now() + 2 * 86400e3).toISOString(),
+  session_reset_from_server: true, weekly_reset_from_server: true,
   session_models: [{ name: 'gpt-oss:120b', request_count: 87 }, { name: 'qwen3-coder', request_count: 155 }],
   weekly_models: [{ name: 'qwen3-coder', request_count: 575 }, { name: 'gpt-oss:120b', request_count: 400 }, { name: 'deepseek-v3', request_count: 33 }],
-  server_time: new Date().toISOString(), fetched_at: new Date().toISOString(),
+  models_available: false, // 新接口暂不提供模型明细：即使数组有值也显示占位
+  balance_usd: null, allowance_usd: null, period_from: null, period_until: null,
+  requests_24h: 87, requests_7d: 612, requests_30d: 2048,
+  server_time: null, fetched_at: new Date().toISOString(),
   last_success_at: new Date().toISOString(),
   failure_level: 'none', error_message: null,
   ...over,
@@ -28,16 +33,27 @@ export const mockGetState = (): AppState => ({
     { alias: '个人', snapshot: snap({ session_pct: 0, failure_level: 'degraded', error_message: '数据滞后 12 分钟', session_models: [] }) },
     { alias: '过期key', snapshot: snap({ failure_level: 'invalid_key', error_message: 'key 无效或已撤销' }) },
     { alias: '接口失效', snapshot: snap({ failure_level: 'dead', error_message: '接口可能已失效，上次成功：2026-09-14T08:00:00Z' }) },
-    // 22 个模型：验证条形图 top-20 截断与长列表排版
-    { alias: LONG_ALIAS_A, snapshot: snap({ session_models: manyModels.slice(0, 5), weekly_models: manyModels }) },
+    // 22 个模型 + models_available=true（模拟官方恢复后的旧视觉）：验证条形图 top-20 截断
+    { alias: LONG_ALIAS_A, snapshot: snap({ models_available: true,
+      session_models: manyModels.slice(0, 5), weekly_models: manyModels }) },
     // 首拍未成功：session_pct 为 null，环形图显示 '--'
     { alias: LONG_ALIAS_B, snapshot: snap({ session_pct: null, failure_level: 'none', last_success_at: null, error_message: null }) },
-    // 两个列表全空：显示"本窗口暂无调用"
-    { alias: '空窗口', snapshot: snap({ session_models: [], weekly_models: [] }) },
-    // 组合场景：degraded + null pct + 空 session 模型 + 重置时间已过期（"即将重置"）
+    // models_available=true 且空数组：显示"本窗口暂无调用"
+    { alias: '空窗口', snapshot: snap({ models_available: true, session_models: [], weekly_models: [] }) },
+    // 组合场景：degraded + null pct + 空 session 模型 + 重置时间已过期（"即将重置"）+ 推算来源标"预计"
     { alias: '混合滞后', snapshot: snap({ session_pct: null, session_models: [],
       weekly_models: manyModels.slice(0, 3), failure_level: 'degraded',
+      session_reset_from_server: false, weekly_reset_from_server: false,
       error_message: '数据滞后 12 分钟', session_reset_est: new Date(Date.now() - 3600e3).toISOString() }) },
+    // 新计费套餐：美元余额画环 + 副标签 + 周期倒计时，无 5h/周窗口
+    { alias: '新套餐', snapshot: snap({ plan_type: 'usage_based',
+      session_pct: null, weekly_pct: null,
+      session_reset_est: null, weekly_reset_est: null,
+      session_reset_from_server: false, weekly_reset_from_server: false,
+      session_models: [], weekly_models: [],
+      balance_usd: 4.2, allowance_usd: 20,
+      period_from: new Date(Date.now() - 18 * 86400e3).toISOString(),
+      period_until: new Date(Date.now() + 12 * 86400e3).toISOString() }) },
   ],
   generated_at: new Date().toISOString(),
 })

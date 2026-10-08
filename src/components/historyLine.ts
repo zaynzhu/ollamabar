@@ -23,5 +23,5 @@ export function renderHistoryLine(samples: Sample[]): string {
     ${boundaries}
     <polyline points="${pts}" fill="none" stroke="#58a6ff" stroke-width="1.5"/>
   </svg>
-  <p class="axis">5h 窗口内累计份额（锯齿为真实形状，虚线为推算重置边界）</p>`
+  <p class="axis">窗口内累计用量（锯齿为真实形状；虚线为 5h 重置边界，新计费套餐为周期边界）</p>`
 }
