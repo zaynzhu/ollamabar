@@ -1,4 +1,5 @@
-// 重置时间推算：接口不返回 reset_at，属客户端推算（H2），显示层须标"预计"
+// 重置时间推算：仅作 fallback——/api/balance 的 resets_at 缺失时才使用，前端须标"预计"（from_server=false）
+// 注意：5h 桶边界规则与前端 historyLine.ts 的虚线公式保持同步
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 
 /// 严格晚于 now 的下一个周一 00:00 UTC

@@ -16,6 +16,7 @@ pub struct Ctx {
     pub runtime: Arc<Mutex<HashMap<String, KeyRuntime>>>, // poller 共用
     pub poll_tx: Arc<Mutex<HashMap<String, tokio::sync::mpsc::Sender<crate::poller::PollerMsg>>>>,
     pub store_tx: tokio::sync::mpsc::Sender<StoreMsg>,
+    pub budget: Arc<crate::poller::RateBudget>, // 跨 key 共享的全局限流预算
 }
 
 pub fn build_state(ctx: &Ctx) -> AppState {

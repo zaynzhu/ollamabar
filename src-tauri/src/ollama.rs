@@ -1,18 +1,6 @@
 // 取数与结构校验：接口文档化（/api/balance、/api/usage），任何结构漂移都走 Parse 失败而非 panic
-use crate::types::ModelStat;
 use crate::types::PlanType;
 use serde::Deserialize;
-
-// ============ 旧 /api/usage 结构（额度已迁移 /api/balance，本段待轮询切换后删除） ============
-
-#[derive(Debug, Clone)]
-pub struct RawUsage {
-    pub session_usage: f64,   // 0~1
-    pub weekly_usage: f64,
-    pub session_models: Vec<ModelStat>,
-    pub weekly_models: Vec<ModelStat>,
-    pub server_time: Option<String>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FetchError { Network, Auth, Http, RateLimited { retry_after_secs: u64 }, Parse }
@@ -28,65 +16,6 @@ impl FetchError {
             FetchError::Parse => "返回结构解析失败（接口可能已变更）",
         }
     }
-}
-
-#[derive(Deserialize)]
-struct ModelRaw { name: String, request_count: i64 }
-
-#[derive(Deserialize)]
-struct WindowRaw { usage: serde_json::Number, #[serde(default)] models: Vec<ModelRaw> }
-
-#[derive(Deserialize)]
-struct PeriodRaw { #[serde(default)] ending_at: Option<String> }
-
-#[derive(Deserialize)]
-struct ActivityRaw { period: PeriodRaw }
-
-#[derive(Deserialize)]
-struct LimitsRaw { session: WindowRaw, weekly: WindowRaw }
-
-#[derive(Deserialize)]
-struct RootRaw {
-    limits: LimitsRaw,
-    activity: ActivityRaw,
-}
-
-fn valid_usage(n: &serde_json::Number) -> bool {
-    // 显式排除布尔：JSON 的 true 不会被 serde 解为 Number，双保险在 Number 侧再验一次
-    match n.as_f64() {
-        Some(v) => (0.0..=1.0).contains(&v) && !v.is_nan(),
-        None => false,
-    }
-}
-
-pub fn parse_usage(body: &str) -> Option<RawUsage> {
-    let root: RootRaw = serde_json::from_str(body).ok()?;
-    if !valid_usage(&root.limits.session.usage) || !valid_usage(&root.limits.weekly.usage) {
-        return None;
-    }
-    Some(RawUsage {
-        session_usage: root.limits.session.usage.as_f64()?,
-        weekly_usage: root.limits.weekly.usage.as_f64()?,
-        session_models: root.limits.session.models.into_iter()
-            .map(|m| ModelStat { name: m.name, request_count: m.request_count }).collect(),
-        weekly_models: root.limits.weekly.models.into_iter()
-            .map(|m| ModelStat { name: m.name, request_count: m.request_count }).collect(),
-        server_time: root.activity.period.ending_at,
-    })
-}
-
-pub async fn fetch_usage(client: &reqwest::Client, url: &str, api_key: &str) -> Result<RawUsage, FetchError> {
-    let resp = client.get(url)
-        .bearer_auth(api_key)
-        .timeout(std::time::Duration::from_secs(10))
-        .send().await.map_err(|_| FetchError::Network)?;
-    match resp.status().as_u16() {
-        200 => {}
-        401 | 403 => return Err(FetchError::Auth),
-        _ => return Err(FetchError::Http),
-    }
-    let body = resp.text().await.map_err(|_| FetchError::Network)?;
-    parse_usage(&body).ok_or(FetchError::Parse)
 }
 
 // ============ 新接口取数层 ============
@@ -123,7 +52,8 @@ pub struct FetchOutcome {
 #[derive(Deserialize)]
 struct BalanceRootRaw {
     included: IncludedRaw,
-    #[serde(default)] purchased: Option<PurchasedRaw>, // 暂不消费，防新增字段破坏解析
+    // 刻意保留解析但不消费：防官方新增 purchased 结构造成整体解析失败
+    #[serde(default)] #[allow(dead_code)] purchased: Option<PurchasedRaw>,
 }
 
 #[derive(Deserialize)]
@@ -142,7 +72,7 @@ struct WindowRaw2 { remaining_percent: serde_json::Number, #[serde(default)] res
 struct BillingPeriodRaw { #[serde(default)] from: Option<String>, #[serde(default)] until: Option<String> }
 
 #[derive(Deserialize)]
-struct PurchasedRaw { #[serde(default)] balance_usd: Option<serde_json::Number> }
+struct PurchasedRaw { #[serde(default)] #[allow(dead_code)] balance_usd: Option<serde_json::Number> }
 
 #[derive(Deserialize)]
 struct StatsRootRaw {
@@ -265,14 +195,6 @@ pub async fn fetch_usage_stats(client: &reqwest::Client, base_url: &str, api_key
 mod tests {
     use super::*;
 
-    const FIXTURE: &str = r#"{
-      "limits": {
-        "session": {"usage": 0.092, "models": [{"name": "gpt-oss:120b", "request_count": 242}]},
-        "weekly": {"usage": 0.049, "models": [{"name": "gpt-oss:120b", "request_count": 575}]}
-      },
-      "activity": {"period": {"ending_at": "2026-09-15T06:29:56Z"}}
-    }"#;
-
     const BALANCE_LEGACY: &str = r#"{
       "included": {
         "session": {"remaining_percent": 75, "resets_at": "2026-10-01T07:00:00Z"},
@@ -307,68 +229,6 @@ mod tests {
             let _ = std::io::Write::write_all(&mut s, resp.as_bytes());
         });
         (addr, handle)
-    }
-
-    fn ok_resp(body: &str) -> String {
-        format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}", body.len(), body)
-    }
-
-    #[test]
-    fn 正常解析() {
-        let raw = parse_usage(FIXTURE).unwrap();
-        assert!((raw.session_usage - 0.092).abs() < 1e-9);
-        assert_eq!(raw.session_models[0].request_count, 242);
-        assert_eq!(raw.server_time.as_deref(), Some("2026-09-15T06:29:56Z"));
-    }
-
-    #[test]
-    fn models缺失容错为空数组() {
-        let body = r#"{"limits":{"session":{"usage":0.1},"weekly":{"usage":0.2}},"activity":{"period":{}}}"#;
-        let raw = parse_usage(body).unwrap();
-        assert!(raw.session_models.is_empty());
-        assert_eq!(raw.server_time, None);
-    }
-
-    #[test]
-    fn usage越界拒收() {
-        let body = r#"{"limits":{"session":{"usage":1.5},"weekly":{"usage":0.2}},"activity":{"period":{}}}"#;
-        assert!(parse_usage(body).is_none());
-    }
-
-    #[test]
-    fn usage为布尔拒收() {
-        let body = r#"{"limits":{"session":{"usage":true},"weekly":{"usage":0.2}},"activity":{"period":{}}}"#;
-        assert!(parse_usage(body).is_none());
-    }
-
-    #[test]
-    fn 结构缺失返回none() {
-        assert!(parse_usage("{}").is_none());
-        assert!(parse_usage("not json").is_none());
-    }
-
-    #[test]
-    fn fetch对本地mock_server集成() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (addr, server) = mock_server(ok_resp(FIXTURE));
-            let client = reqwest::Client::new();
-            let raw = fetch_usage(&client, &format!("http://{addr}/api/usage"), "test-key").await.unwrap();
-            assert_eq!(raw.session_models.len(), 1);
-            server.join().unwrap();
-        });
-    }
-
-    #[test]
-    fn fetch_401判定为auth错误() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let (addr, server) = mock_server("HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n".into());
-            let client = reqwest::Client::new();
-            let err = fetch_usage(&client, &format!("http://{addr}/api/usage"), "bad").await.unwrap_err();
-            assert!(matches!(err, FetchError::Auth));
-            server.join().unwrap();
-        });
     }
 
     // —— 新接口测试 ——

@@ -6,15 +6,15 @@ use rusqlite::Connection;
 #[derive(Debug, Clone)]
 pub struct SampleRow {
     pub alias: String, pub fetched_at: String,
-    pub session_pct: f64, pub weekly_pct: f64,
+    pub session_pct: f64, pub weekly_pct: Option<f64>, // Legacy 恒有值；usage_based 无周窗口为 None
     pub session_models: Vec<ModelStat>, pub weekly_models: Vec<ModelStat>,
-    pub server_time: Option<String>,
+    pub server_time: Option<String>, // 列复用：存服务端 session resets_at（日志备注列展示）
 }
 
 impl From<SampleRow> for Sample {
     fn from(r: SampleRow) -> Sample {
         Sample { ts: r.fetched_at, session_pct: r.session_pct,
-                 weekly_pct: r.weekly_pct, session_models: r.session_models }
+                 weekly_pct: r.weekly_pct.unwrap_or(0.0), session_models: r.session_models }
     }
 }
 
@@ -202,7 +202,7 @@ mod tests {
     fn row(alias: &str, ts: &str, pct: f64) -> SampleRow {
         SampleRow {
             alias: alias.into(), fetched_at: ts.into(),
-            session_pct: pct, weekly_pct: pct * 2.0,
+            session_pct: pct, weekly_pct: Some(pct * 2.0),
             session_models: vec![ModelStat { name: "m".into(), request_count: 1 }],
             weekly_models: vec![], server_time: None,
         }

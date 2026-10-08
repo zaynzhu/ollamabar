@@ -14,7 +14,7 @@ use tauri::Manager;
 
 use commands::Ctx;
 
-/// 包装 poller::run_key_task：构造真机 FetchFn（闭包自带 reqwest::Client）、
+/// 包装 poller::run_key_task：构造真机 FetchFn（闭包自带 reqwest::Client，按计划调 balance/统计双端点）、
 /// 往 runtime 表插入 KeyRuntime、启动任务并把命令通道存入 poll_tx。
 /// 注意：不用 tokio::spawn（command 线程无运行时上下文会 panic），统一走 tauri::async_runtime。
 pub fn spawn_key_task(_app: &tauri::AppHandle, ctx: &Ctx, key: &config::KeyConfig) {
@@ -22,9 +22,17 @@ pub fn spawn_key_task(_app: &tauri::AppHandle, ctx: &Ctx, key: &config::KeyConfi
         .map(|c| c.poll_interval_secs)
         .unwrap_or(60); // 配置读不出时退回默认间隔
     let client = reqwest::Client::new();
-    let fetch: poller::FetchFn = Arc::new(move |api_key| {
+    let fetch: poller::FetchFn = Arc::new(move |api_key, plan| {
         let client = client.clone();
-        Box::pin(async move { ollama::fetch_usage(&client, poller::DEFAULT_URL, &api_key).await })
+        Box::pin(async move {
+            let balance = ollama::fetch_balance(&client, poller::BALANCE_URL, &api_key).await;
+            let stats = match plan {
+                poller::FetchPlan::BalanceAndStats { range } =>
+                    Some(ollama::fetch_usage_stats(&client, poller::USAGE_URL, &api_key, range.as_str()).await),
+                poller::FetchPlan::BalanceOnly => None,
+            };
+            ollama::FetchOutcome { balance, stats }
+        })
     });
     ctx.runtime.lock().unwrap().insert(key.alias.clone(), state::KeyRuntime::new(&key.alias));
     let (tx, rx) = tokio::sync::mpsc::channel::<poller::PollerMsg>(8);
@@ -36,7 +44,7 @@ pub fn spawn_key_task(_app: &tauri::AppHandle, ctx: &Ctx, key: &config::KeyConfi
     // 任务句柄即弃：停止靠 poll_tx 发 Stop，不持有 JoinHandle
     let _task = tauri::async_runtime::spawn(poller::run_key_task(
         key.alias.clone(), key.api_key.clone(), cfg, fetch,
-        ctx.store_tx.clone(), ctx.runtime.clone(), rx));
+        ctx.store_tx.clone(), ctx.runtime.clone(), ctx.budget.clone(), rx));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -81,6 +89,7 @@ pub fn run() {
                 runtime: runtime.clone(),
                 poll_tx: Arc::new(Mutex::new(HashMap::new())),
                 store_tx,
+                budget: Arc::new(poller::RateBudget::new(poller::BUDGET_PER_MIN)),
             });
 
             // SQLite 单写者任务：唯一持写连接；每处理完一条 StoreMsg 推一次 state-changed
