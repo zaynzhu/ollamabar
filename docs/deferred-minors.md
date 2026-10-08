@@ -27,6 +27,8 @@
 | 19 | `package-lock.json` | registry 指向 npmmirror 镜像（换 registry 时 lock 仍可复用，integrity 校验兜底） | |
 | 20 | `src/components/detail.ts` | 弹窗标题与导出提示的 alias 插值进 innerHTML 未转义（与 #3/#4 同类，真实别名可控自用场景风险低） | 2026-09-17 详情弹窗新增 |
 | 21 | `src-tauri/src/commands.rs` | `export_log` 的保存对话框与写文件仅在编译+mock 层验证，未真机实测保存路径 | 2026-09-17 新增；下次真机点"导出日志"确认 |
+| 22 | `src-tauri/src/store.rs` | samples 表 `session_pct` 列对新计费套餐存"本期已用%"，与 Legacy 的"5h 已用%"语义混用一列（历史曲线目前只画 session_pct，无视觉影响） | 2026-10-08 接口升级引入；长期方案为加专列，见 verify-usage.md |
+| 23 | 数据 | 24h/7d/30d 请求统计未入历史曲线（仅卡片/详情/日志行展示）；如需按请求次数画趋势线需扩展 samples 表 | 2026-10-08 新增；官方 buckets 接口已具备数据源 |
 
 ## 记录在案、无需处理
 
